@@ -284,8 +284,11 @@ class Fighter {
         }
 
         if (loaded) {
-            const frameW = sprite.naturalWidth / 4;
-            const frameH = sprite.naturalHeight;
+            // Support both Image (.naturalWidth) and Canvas (.width)
+            const fW = sprite.naturalWidth || sprite.width;
+            const fH = sprite.naturalHeight || sprite.height;
+            const frameW = fW / 4;
+            const frameH = fH;
 
             // Fixed draw height, width preserves aspect ratio
             const dH = DRAW_H;
