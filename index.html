@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Street Fight - WebRTC</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- PeerJS for P2P connection -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <!-- NippleJS for Mobile Joystick -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.9.1/nipplejs.min.js"></script>
+</head>
+
+<body>
+
+    <!-- UI Overlay for Game -->
+    <div id="gameUI" class="hidden">
+        <div class="top-bar">
+            <!-- Player 1 Profile & Health -->
+            <div class="player-info p1-info">
+                <div class="health-bar-container">
+                    <div id="p1Health" class="health-bar"></div>
+                    <div id="p1HealthDmg" class="health-bar dmg"></div>
+                </div>
+                <div class="name-rounds">
+                    <span id="p1Name" class="player-name">Player 1</span>
+                    <div class="rounds" id="p1Rounds">
+                        <div class="round-pip" id="p1R1"></div>
+                        <div class="round-pip" id="p1R2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timer Display -->
+            <div id="timer" class="timer">99</div>
+
+            <!-- Player 2 Profile & Health -->
+            <div class="player-info p2-info">
+                <div class="health-bar-container right">
+                    <div id="p2Health" class="health-bar"></div>
+                    <div id="p2HealthDmg" class="health-bar dmg"></div>
+                </div>
+                <div class="name-rounds right">
+                    <div class="rounds" id="p2Rounds">
+                        <div class="round-pip" id="p2R1"></div>
+                        <div class="round-pip" id="p2R2"></div>
+                    </div>
+                    <span id="p2Name" class="player-name">Player 2</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Game Announcements (FIGHT, KO, P1 WINS) -->
+        <div id="announcement" class="announcement message-text hidden">ROUND 1</div>
+
+        <!-- Mobile Controls (Hidden on PC) -->
+        <div id="mobileControls" class="mobile-controls hidden">
+            <!-- Joystick Container -->
+            <div id="joystickZone"></div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <!-- Row 1 -->
+                <button id="btnLight" class="action-btn btn-light-punch">Light(H)</button>
+                <button id="btnHeavy" class="action-btn btn-heavy-punch">Heavy(J)</button>
+                <!-- Row 2 -->
+                <button id="btnKick" class="action-btn btn-kick">Kick(K)</button>
+                <button id="btnSpecial" class="action-btn btn-special">Spec.(L)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Screens Layer -->
+    <div id="screens">
+
+        <!-- 1. Main Menu -->
+        <div id="mainMenu" class="screen active">
+            <h1 class="logo">STREET FIGHTING</h1>
+            <div class="menu-box blurred-bg">
+                <input type="text" id="playerNameInput" placeholder="İsminizi girin" maxlength="12">
+                <br>
+                <button id="btnSinglePlayer" class="main-btn" style="background-color: #28a745;">Tek Oyunculu Oyna
+                    (Bot)</button>
+                <div class="divider">veya (Çok Oyunculu)</div>
+                <button id="btnGoToHost" class="main-btn">Oda Kur (Host)</button>
+                <div class="divider">veya</div>
+                <input type="text" id="roomCodeInput" placeholder="Oda Kodunu Girin (4 Harf)" maxlength="4"
+                    style="text-transform:uppercase">
+                <button id="btnJoinRoom" class="main-btn">Katıl</button>
+            </div>
+        </div>
+
+        <!-- 2. Round Select Menu -->
+        <div id="roundSelectMenu" class="screen hidden">
+            <h1 class="logo">AYARLAR</h1>
+            <div class="menu-box blurred-bg">
+                <h2>Kazanma Sayısı (Round)</h2>
+                <div class="selection-grid">
+                    <div class="select-card active">Best of 3 (2 Alan Kazanır)</div>
+                    <div class="select-card disabled">Best of 5 (Yakında)</div>
+                </div>
+                <br><br>
+                <button id="btnConfirmRounds" class="main-btn">Devam Et</button>
+                <button class="main-btn btn-back" onclick="switchScreen(screens.main)">Geri</button>
+            </div>
+        </div>
+
+        <!-- 3. Character Select Menu -->
+        <div id="charSelectMenu" class="screen hidden">
+            <h1 class="logo">KARAKTER SEÇİMİ</h1>
+            <div class="menu-box blurred-bg" style="width:600px; max-width:90%;">
+                <div class="selection-grid chars">
+                    <div class="char-card active" onclick="selectCharacter(1)">
+                        <img src="char_fighter.png" alt="Sokak Dövüşçüsü"
+                            style="width:120px;height:200px;object-fit:cover;border-radius:4px;">
+                        <p>Sokak Dövüşçüsü</p>
+                    </div>
+                    <div class="char-card" onclick="selectCharacter(2)">
+                        <img src="char_boxer.png" alt="Ağır Boksör"
+                            style="width:120px;height:200px;object-fit:cover;border-radius:4px;">
+                        <p>Ağır Boksör</p>
+                    </div>
+                </div>
+                <br><br>
+                <button id="btnConfirmChar" class="main-btn">Devam Et</button>
+            </div>
+        </div>
+
+        <!-- 4. Stage Select Menu -->
+        <div id="stageSelectMenu" class="screen hidden">
+            <h1 class="logo">ARENA SEÇİMİ</h1>
+            <div class="menu-box blurred-bg" style="width:600px; max-width:90%;">
+                <div class="selection-grid stages">
+                    <div class="stage-card active">
+                        <img src="fighting_arena_bg.png" alt="Arena">
+                        <p>Yeraltı Arenası</p>
+                    </div>
+                    <div class="stage-card disabled">
+                        <p>Gizli Arena (Yakında)</p>
+                    </div>
+                </div>
+                <br><br>
+                <button id="btnConfirmStage" class="main-btn">Oyunu Başlat</button>
+            </div>
+        </div>
+
+        <!-- 5. Host Waiting Room -->
+        <div id="hostLobby" class="screen hidden">
+            <h1 class="logo">LOBİ</h1>
+            <div class="menu-box blurred-bg">
+                <h2>Oda Kuruldu</h2>
+                <div class="room-code-display">
+                    Oda Kodu: <span id="displayRoomCode">----</span>
+                </div>
+                <p>Rakip bekleniyor...</p>
+                <div class="loader"></div>
+                <br>
+                <button class="main-btn btn-back" onclick="location.reload()">İptal Et</button>
+            </div>
+        </div>
+
+        <!-- 6. Escape/Pause Menu -->
+        <div id="escMenu" class="screen hidden">
+            <h1 class="logo" style="margin-top:100px;">DURAKLATILDI</h1>
+            <div class="menu-box blurred-bg">
+                <button class="main-btn" onclick="toggleEscMenu()">Oyuna Dön (ESC)</button>
+                <br><br>
+                <button id="btnReturnMenu" class="main-btn" style="background-color: #555;">Ana Menüye Dön</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas" width="1024" height="576"></canvas>
+
+    <!-- Scripts -->
+    <script src="audio.js"></script>
+    <script src="network.js"></script>
+    <script src="input.js"></script>
+    <script src="fighter.js"></script>
+    <script src="main.js"></script>
+
+</body>
+
+</html>
