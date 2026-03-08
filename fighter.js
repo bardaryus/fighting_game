@@ -95,7 +95,8 @@ function preprocessP2Sprite() {
 }
 
 fighterSprite1.onload = preprocessP2Sprite;
-fighterSprite1.src = 'fighter_sprite_sheet_transparent.png';
+// Cache busting (?v=1) added to force refresh on GitHub
+fighterSprite1.src = 'fighter_sprite_sheet_transparent.png?v=1';
 
 // 4 frames in a single horizontal row: Idle | Walk | Attack | Hurt
 const FRAMES = { IDLE: 0, WALK: 1, ATTACK: 2, HURT: 3 };
@@ -265,9 +266,13 @@ class Fighter {
     // Uses foot-anchor: sprite bottom = this.footY, center = this.footX
     // Mirror is handled by a clean save/translate/scale/restore block.
     draw(ctx) {
-        // P1 uses the original sprite; P2 uses the pre-processed clothing-tinted canvas.
+        // Character 1 uses the main sprite sheet, but we can expand this for Char 2 if needed.
+        // For now, let's at least make sure P1 and P2 draw correctly.
         const useP2Tinted = !this.isP1 && fighterSprite2Tinted !== null;
-        const sprite = useP2Tinted ? fighterSprite2Tinted : fighterSprite1;
+        let sprite = useP2Tinted ? fighterSprite2Tinted : fighterSprite1;
+
+        // If they chose the boxer, let's at least log it or try to load it (if you have the file)
+        // For now, using the main tinted/untinted sheet as agreed.
         const loaded = useP2Tinted ? true : (sprite.complete && sprite.naturalWidth > 0);
 
         let frameIdx = FRAMES.IDLE;
